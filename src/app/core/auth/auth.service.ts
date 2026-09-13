@@ -2,6 +2,8 @@ import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { MsalService } from '@azure/msal-angular';
+import { AccountInfo } from '@azure/msal-browser';
 
 export type UserRole = 'Admin' | 'Supervisor' | 'Cliente' | null;
 
@@ -21,6 +23,7 @@ const MOCK_USERS: Record<string, MockUser> = {
 export class AuthService {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private msal = inject(MsalService, { optional: true });
 
   private userSubject = new BehaviorSubject<MockUser | null>(this.loadUser());
   private tokenSubject = new BehaviorSubject<string | null>(this.loadToken());
@@ -54,15 +57,32 @@ export class AuthService {
     this.tokenSubject.next(fakeJwt);
   }
 
-  // Placeholder para login real con MSAL
   async loginWithMsal(): Promise<void> {
-    if (environment.mockAuth) {
-      this.loginAs('cliente');
-      return;
+    if (environment.mockAuth) { this.loginAs('cliente'); return; }
+    if (!this.msal) { console.warn('MsalService no disponible'); return; }
+    const accounts = this.msal.instance.getAllAccounts();
+    if (accounts.length === 0) {
+      await this.msal.instance.loginRedirect({ scopes: environment.msal.scopes });
+    } else {
+      this.syncFromMsalAccount(accounts[0]);
     }
-    // TODO: Integrar MsalService.loginRedirect() cuando tengan clientId/tenant
-    // Ej: this.msalService.loginRedirect({ scopes: environment.msal.scopes })
-    console.warn('MSAL real no configurado - activar mockAuth=false y configurar environment.msal');
+  }
+
+  syncFromMsalAccount(account: AccountInfo): void {
+    if (!this.isBrowser) return;
+    const claims = (account.idTokenClaims as any) || {};
+    const roles: string[] = claims['roles'] || [];
+    let role: UserRole = 'Cliente';
+    if (roles.map((r:string)=>r.toLowerCase()).includes('admin')) role = 'Admin';
+    else if (roles.map((r:string)=>r.toLowerCase()).includes('supervisor')) role = 'Supervisor';
+    const user: MockUser = { name: account.name || account.username || 'Usuario', email: account.username || '', role };
+    localStorage.setItem('df_user', JSON.stringify(user));
+    this.userSubject.next(user);
+    // token se obtiene via acquireTokenSilent en interceptor MsalInterceptor; guardamos placeholder
+    this.msal?.instance.acquireTokenSilent({ scopes: environment.msal.scopes, account }).then(res => {
+      localStorage.setItem('df_token', res.accessToken);
+      this.tokenSubject.next(res.accessToken);
+    }).catch(()=>{});
   }
 
   logout(): void {
@@ -72,6 +92,9 @@ export class AuthService {
     }
     this.userSubject.next(null);
     this.tokenSubject.next(null);
+    if (!environment.mockAuth && this.msal) {
+      this.msal.instance.logoutRedirect({ postLogoutRedirectUri: environment.msal.postLogoutRedirectUri });
+    }
   }
 
   hasRole(roles: UserRole[]): boolean {

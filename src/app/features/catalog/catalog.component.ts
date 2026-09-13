@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { AuthService } from '../../core/auth/auth.service';
+import { CatalogService, RepuestoDto, ServicioDto } from '../../core/services/catalog.service';
 
 interface CatalogItem {
   id: number;
@@ -48,14 +49,27 @@ interface CatalogItem {
   </div>
   `
 })
-export class CatalogComponent {
+export class CatalogComponent implements OnInit {
   auth = inject(AuthService);
-  items: CatalogItem[] = [
-    { id: 1, name: 'Reparación Notebook - Diagnóstico', price: 25000, stock: 15, type: 'SERVICIO' },
-    { id: 2, name: 'Disco SSD 512GB', price: 45000, stock: 3, type: 'REPUESTO' },
-    { id: 3, name: 'Memoria RAM 16GB', price: 35000, stock: 12, type: 'REPUESTO' },
-    { id: 4, name: 'Instalación Red Corporativa', price: 80000, stock: 20, type: 'SERVICIO' },
-    { id: 5, name: 'Teclado Mecánico', price: 30000, stock: 2, type: 'REPUESTO' },
-    { id: 6, name: 'Mantención Preventiva PC', price: 18000, stock: 30, type: 'SERVICIO' },
-  ];
+  private api = inject(CatalogService);
+  items: CatalogItem[] = [];
+  loading=false; error:string|null=null;
+  ngOnInit(): void { this.load(); }
+  load(): void {
+    this.loading=true;
+    // Intenta BFF, fallback mock
+    this.api.listRepuestos().subscribe({
+      next: reps => {
+        this.api.listServicios().subscribe({
+          next: servs => { this.items = [...servs.map(s=>({id:s.id,name:s.nombre,price:Number(s.tarifa),stock:999,type:'SERVICIO' as const})), ...reps.map(r=>({id:r.id,name:r.nombre,price:Number(r.precio),stock:r.stock,type:'REPUESTO' as const}))]; this.loading=false; },
+          error: ()=>{ this.items = reps.map(r=>({id:r.id,name:r.nombre,price:Number(r.precio),stock:r.stock,type:'REPUESTO' as const})); this.loading=false; }
+        });
+      },
+      error: err => { this.error = err.error?.message || err.message; this.loading=false; this.items=[
+        { id: 1, name: 'Reparación Notebook - Diagnóstico', price: 25000, stock: 15, type: 'SERVICIO' },
+        { id: 2, name: 'Disco SSD 512GB', price: 45000, stock: 3, type: 'REPUESTO' },
+        { id: 3, name: 'Memoria RAM 16GB', price: 35000, stock: 12, type: 'REPUESTO' },
+      ];}
+    });
+  }
 }

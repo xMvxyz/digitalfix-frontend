@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -8,6 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
 import { AuthService } from '../../core/auth/auth.service';
+import { WorkordersService, WorkOrderDto } from '../../core/services/workorders.service';
 
 interface WorkOrder {
   id: string;
@@ -15,6 +16,7 @@ interface WorkOrder {
   service: string;
   status: 'CREADA' | 'ASIGNADA' | 'EN_DESPLAZAMIENTO' | 'EN_EJECUCIÓN' | 'CERRADA' | 'CANCELADA';
   technician?: string;
+  raw?: WorkOrderDto;
 }
 
 @Component({
@@ -25,8 +27,14 @@ interface WorkOrder {
   <div class="p-6 max-w-7xl mx-auto">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
       <div><h1 class="text-2xl font-bold text-slate-900">Órdenes de trabajo</h1><p class="text-sm text-slate-500">Módulo principal • /api/workorders/* • Cliente crea, Supervisor/Admin cambia estados</p></div>
-      <button mat-raised-button color="primary" (click)="createOrder()"><mat-icon>add</mat-icon> Nueva orden</button>
+      <div class="flex gap-2">
+        <input [(ngModel)]="newServicio" placeholder="Servicio" class="border rounded px-2 py-1 text-sm"/>
+        <input [(ngModel)]="newDescripcion" placeholder="Descripción" class="border rounded px-2 py-1 text-sm"/>
+        <button mat-raised-button color="primary" (click)="createOrder()"><mat-icon>add</mat-icon> Nueva orden</button>
+      </div>
     </div>
+    <div *ngIf="loading" class="text-sm text-slate-500">Cargando...</div>
+    <div *ngIf="error" class="text-sm text-amber-700 bg-amber-50 p-2 rounded mb-2">{{error}} (mostrando mock)</div>
 
     <div class="bg-white rounded-xl shadow overflow-hidden">
       <div class="overflow-x-auto">
@@ -68,14 +76,32 @@ interface WorkOrder {
   </div>
   `
 })
-export class WorkordersComponent {
+export class WorkordersComponent implements OnInit {
   auth = inject(AuthService);
-  orders: WorkOrder[] = [
-    { id: 'WF-1023', client: 'cliente@digitalfix.cl', service: 'Reparación Notebook', status: 'EN_DESPLAZAMIENTO', technician: 'Técnico A' },
-    { id: 'WF-1024', client: 'cliente@digitalfix.cl', service: 'Instalación Red', status: 'CREADA' },
-    { id: 'WF-1025', client: 'juan@test.cl', service: 'Mantención Impresora', status: 'ASIGNADA', technician: 'Técnico B' },
-    { id: 'WF-1026', client: 'juan@test.cl', service: 'Cambio Disco SSD', status: 'EN_EJECUCIÓN', technician: 'Técnico A' },
-  ];
+  private api = inject(WorkordersService);
+  orders: WorkOrder[] = [];
+  loading = false; error: string | null = null;
+  newServicio = ''; newDescripcion=''; newRepuestoId?: number;
+
+  ngOnInit(): void { this.load(); }
+
+  private mapDto(d: WorkOrderDto): WorkOrder {
+    const st = (d.estado?.replace('EN_EJECUCION','EN_EJECUCIÓN') as WorkOrder['status']) || 'CREADA';
+    return { id: String(d.id), client: d.clienteEmail, service: d.servicio, status: st, technician: d.tecnicoAsignado, raw: d };
+  }
+
+  load(): void {
+    this.loading=true; this.error=null;
+    this.api.list().subscribe({
+      next: list => { this.orders = list.map(d=>this.mapDto(d)); this.loading=false; },
+      error: err => { this.error = err.error?.message || err.message; this.loading=false; // fallback mock si BFF no disponible
+        if (this.orders.length===0) this.orders=[
+          { id: 'WF-1023', client: 'cliente@digitalfix.cl', service: 'Reparación Notebook', status: 'EN_DESPLAZAMIENTO', technician: 'Técnico A' },
+          { id: 'WF-1024', client: 'cliente@digitalfix.cl', service: 'Instalación Red', status: 'CREADA' },
+        ];
+      }
+    });
+  }
 
   canChangeStatus(o: WorkOrder): boolean {
     if (this.auth.role === 'Cliente') return false;
@@ -84,21 +110,24 @@ export class WorkordersComponent {
   }
 
   nextStatus(o: WorkOrder) {
-    const flow: Record<string, WorkOrder['status']> = {
-      'CREADA': 'ASIGNADA',
-      'ASIGNADA': 'EN_DESPLAZAMIENTO',
-      'EN_DESPLAZAMIENTO': 'EN_EJECUCIÓN',
-      'EN_EJECUCIÓN': 'CERRADA'
-    };
+    const flow: Record<string, WorkOrder['status']> = { 'CREADA':'ASIGNADA','ASIGNADA':'EN_DESPLAZAMIENTO','EN_DESPLAZAMIENTO':'EN_EJECUCIÓN','EN_EJECUCIÓN':'CERRADA' };
     const next = flow[o.status];
-    if (next) {
-      if (o.status === 'CREADA') o.technician = 'Técnico A (stock -1)';
-      o.status = next;
-    }
+    if (!next) return;
+    const payload: any = { estado: next.replace('EN_EJECUCIÓN','EN_EJECUCION') };
+    if (next==='ASIGNADA') payload.tecnico = 'tecnico.' + (this.auth.user?.email || 'tech') + '@digitalfix.cl';
+    const idNum = Number(o.id) || Number(o.raw?.id);
+    if (!idNum) { o.status=next; return; }
+    this.api.changeStatus(idNum, payload).subscribe({
+      next: dto => Object.assign(o, this.mapDto(dto)),
+      error: err => alert('Transición rechazada: ' + (err.error?.message || err.error?.error || err.message))
+    });
   }
 
   createOrder() {
-    const id = `WF-${1027 + this.orders.length}`;
-    this.orders.unshift({ id, client: this.auth.user?.email || 'cliente@digitalfix.cl', service: 'Servicio nuevo', status: 'CREADA' });
+    const body = { clienteEmail: this.auth.user?.email || 'cliente@digitalfix.cl', servicio: this.newServicio || 'Servicio nuevo', descripcion: this.newDescripcion || undefined, repuestoId: this.newRepuestoId || undefined };
+    this.api.create(body).subscribe({
+      next: dto => { this.orders.unshift(this.mapDto(dto)); this.newServicio=''; this.newDescripcion=''; },
+      error: err => alert('Error crear: '+(err.error?.message||err.message))
+    });
   }
 }
