@@ -19,34 +19,22 @@ import { CommonModule } from '@angular/common';
           <mat-icon class="text-white text-3xl">build</mat-icon>
         </div>
         <h1 class="text-2xl font-bold text-slate-900">DigitalFix</h1>
-        <p class="text-sm text-slate-500">Órdenes de mantención • Microsoft Entra ID</p>
-        <p class="text-xs text-amber-600 mt-1 font-medium">Modo mock activo - Seleccione un rol</p>
       </div>
 
-      <button mat-raised-button color="primary" class="w-full mb-3" (click)="loginMsal()">
+      <button mat-raised-button color="primary" class="w-full mb-6" (click)="loginMsal()">
         <mat-icon>login</mat-icon> Iniciar sesión con Microsoft
       </button>
-      <p class="text-xs text-center text-slate-400 mb-4">Usará Entra ID cuando configure environment.msal</p>
-
-      <mat-divider class="my-4"></mat-divider>
-      <p class="text-sm font-medium text-slate-700 mb-2">Acceso rápido por rol (mock):</p>
 
       <div class="grid gap-2">
         <button mat-stroked-button class="justify-start" (click)="loginAs('admin')">
-          <mat-icon>admin_panel_settings</mat-icon> Admin - Gestiona servicios y repuestos
+          <mat-icon>admin_panel_settings</mat-icon> Admin
         </button>
-        <button mat-stroked-button class="justify-start border-amber-200 bg-amber-50" (click)="loginAs('supervisor')">
-          <mat-icon>supervisor_account</mat-icon> Supervisor - Asigna y cierra trabajos
+        <button mat-stroked-button class="justify-start" (click)="loginAs('supervisor')">
+          <mat-icon>supervisor_account</mat-icon> Supervisor
         </button>
         <button mat-stroked-button class="justify-start" (click)="loginAs('cliente')">
-          <mat-icon>person</mat-icon> Cliente - Crea y sigue órdenes
+          <mat-icon>person</mat-icon> Cliente
         </button>
-      </div>
-
-      <div class="mt-6 p-3 bg-slate-50 rounded-lg text-xs text-slate-600">
-        <p class="font-semibold mb-1">Flujo EP1:</p>
-        <p>MSAL → API Gateway (JWT) → BFF (re-valida JWT + rol) → ms-workorders / ms-catalog</p>
-        <p class="mt-2 text-[11px]">Configure tenant, clientId y authority en <code>environment.ts</code> y ponga <code>mockAuth=false</code> para probar Entra ID real.</p>
       </div>
     </mat-card>
   </div>
