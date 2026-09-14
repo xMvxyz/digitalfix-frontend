@@ -76,19 +76,13 @@ export class AuthService {
       this.msal.instance.setActiveAccount(account);
     }
 
-    const claims = (account.idTokenClaims as any) || {};
-    const roles: string[] = claims['roles'] || [];
-    let role: UserRole = 'Cliente';
-    if (roles.map((r:string)=>r.toLowerCase()).includes('admin')) role = 'Admin';
-    else if (roles.map((r:string)=>r.toLowerCase()).includes('supervisor')) role = 'Supervisor';
-    const user: MockUser = { 
-      name: account.name || account.username || 'Usuario',
-      email: account.username || '', 
-      role 
-    };
+    // Valor inicial desde el ID token (puede no traer 'roles')
+    this.applyUserFromClaims(
+      account.name || account.username || 'Usuario',
+      account.username || '',
+      (account.idTokenClaims as any)?.['roles']
+    );
 
-    localStorage.setItem('df_user', JSON.stringify(user));
-    this.userSubject.next(user);
     // token se obtiene via acquireTokenSilent en interceptor MsalInterceptor; guardamos placeholder
     this.msal?.instance.acquireTokenSilent({ 
       scopes: environment.msal.scopes,
@@ -96,7 +90,40 @@ export class AuthService {
     }).then(res => {
       localStorage.setItem('df_token', res.accessToken);
       this.tokenSubject.next(res.accessToken);
+      // Los roles de aplicación de Entra ID viajan en el ACCESS token: refina el rol con ellos
+      const accessRoles = this.readRolesFromJwt(res.accessToken);
+      if (accessRoles) {
+        const current = this.userSubject.value;
+        this.applyUserFromClaims(
+          current?.name || account.name || account.username || 'Usuario',
+          current?.email || account.username || '',
+          accessRoles
+        );
+      }
     }).catch(err => console.warn('Error adquiriendo token silencioso:', err));
+  }
+
+  private applyUserFromClaims(name: string, email: string, rolesClaim: unknown): void {
+    if (!this.isBrowser) return;
+    const roles: string[] = Array.isArray(rolesClaim) ? (rolesClaim as string[]) : [];
+    let role: UserRole = 'Cliente';
+    if (roles.map((r: string) => r.toLowerCase()).includes('admin')) role = 'Admin';
+    else if (roles.map((r: string) => r.toLowerCase()).includes('supervisor')) role = 'Supervisor';
+    const user: MockUser = { name, email, role };
+
+    localStorage.setItem('df_user', JSON.stringify(user));
+    this.userSubject.next(user);
+  }
+
+  private readRolesFromJwt(jwt: string): string[] | null {
+    try {
+      const payload = jwt.split('.')[1];
+      if (!payload) return null;
+      const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+      return Array.isArray(json?.['roles']) ? (json['roles'] as string[]) : null;
+    } catch {
+      return null;
+    }
   }
 
   logout(): void {

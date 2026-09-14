@@ -21,21 +21,9 @@ import { CommonModule } from '@angular/common';
         <h1 class="text-2xl font-bold text-slate-900">DigitalFix</h1>
       </div>
 
-      <button mat-raised-button color="primary" class="w-full mb-6" (click)="loginMsal()">
+      <button mat-raised-button color="primary" class="w-full" (click)="loginMsal()">
         <mat-icon>login</mat-icon> Iniciar sesión con Microsoft
       </button>
-
-      <div class="grid gap-2">
-        <button mat-stroked-button class="justify-start" (click)="loginAs('admin')">
-          <mat-icon>admin_panel_settings</mat-icon> Admin
-        </button>
-        <button mat-stroked-button class="justify-start" (click)="loginAs('supervisor')">
-          <mat-icon>supervisor_account</mat-icon> Supervisor
-        </button>
-        <button mat-stroked-button class="justify-start" (click)="loginAs('cliente')">
-          <mat-icon>person</mat-icon> Cliente
-        </button>
-      </div>
     </mat-card>
   </div>
   `
@@ -43,11 +31,6 @@ import { CommonModule } from '@angular/common';
 export class LoginComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
-
-  loginAs(role: 'admin' | 'supervisor' | 'cliente') {
-    this.auth.loginAs(role);
-    this.router.navigate(['/dashboard']);
-  }
 
   async loginMsal() {
     await this.auth.loginWithMsal();

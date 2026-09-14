@@ -8,7 +8,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { WorkordersService } from '../../core/services/workorders.service';
 import { CatalogService } from '../../core/services/catalog.service';
 import { WorkOrderDto } from '../../shared/models/work-order.models';
-import { RepuestoDto } from '../../shared/models/catalog.models';
+import { RepuestoDto, ServicioDto } from '../../shared/models/catalog.models';
 
 @Component({
   selector: 'app-dashboard',
@@ -16,7 +16,7 @@ import { RepuestoDto } from '../../shared/models/catalog.models';
   imports: [CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule],
   template: `
   <div class="p-6 max-w-7xl mx-auto">
-    <h1 class="text-2xl font-bold text-slate-900">Dashboard</h1>
+    <h1 class="text-2xl font-bold text-slate-900">{{ auth.role === 'Cliente' ? 'DigitalFix' : 'Dashboard' }}</h1>
     <p class="text-slate-500 mb-6">Bienvenido {{ auth.user?.name }} - Rol: <span class="font-semibold text-blue-600">{{ auth.role }}</span></p>
 
     <!-- Vista Admin -->
@@ -72,50 +72,48 @@ import { RepuestoDto } from '../../shared/models/catalog.models';
       </mat-card>
     </section>
 
-    <!-- Vista Cliente -->
+    <!-- Vista Cliente: catálogo (para el Cliente, dashboard y catálogo son lo mismo).
+         Sin órdenes a la vista y sin cambio de estados: solo solicitar servicios. -->
     <div *ngIf="auth.role === 'Cliente'" class="grid md:grid-cols-2 gap-4">
-      <mat-card class="p-4 border-l-4 border-blue-600"><p class="text-sm text-slate-500">Mis órdenes activas</p><p class="text-2xl font-bold">{{kpis.misOrdenes}}</p></mat-card>
-      <mat-card class="p-4 border-l-4 border-emerald-500"><p class="text-sm text-slate-500">Órdenes cerradas</p><p class="text-2xl font-bold">{{closedOrders}}</p></mat-card>
+      <mat-card class="p-4 border-l-4 border-blue-600"><p class="text-sm text-slate-500">Servicios disponibles</p><p class="text-2xl font-bold">{{servicios.length}}</p></mat-card>
+      <mat-card class="p-4 border-l-4 border-emerald-500"><p class="text-sm text-slate-500">Repuestos en catálogo</p><p class="text-2xl font-bold">{{repuestos.length}}</p></mat-card>
     </div>
 
     <section *ngIf="auth.role === 'Cliente'" class="mt-8">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-        <div>
-          <h2 class="text-xl font-semibold text-slate-900">Seguimiento de mis órdenes</h2>
-          <p class="text-sm text-slate-500">Consulta el estado actual y avanza la orden según el flujo permitido.</p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <input [(ngModel)]="newServicio" placeholder="Servicio" class="border rounded px-2 py-1 text-sm" />
-          <input [(ngModel)]="newDescripcion" placeholder="Descripción" class="border rounded px-2 py-1 text-sm" />
-          <button mat-raised-button color="primary" (click)="createClientOrder()"><mat-icon>add</mat-icon> Crear orden</button>
-        </div>
+      <div class="mb-4">
+        <h2 class="text-xl font-semibold text-slate-900">Catálogo de servicios</h2>
+        <p class="text-sm text-slate-500">Selecciona un servicio para solicitar una orden de mantención.</p>
       </div>
 
-      <div *ngIf="clientLoading" class="text-sm text-slate-500">Cargando tus órdenes...</div>
+      <div *ngIf="catLoading" class="text-sm text-slate-500">Cargando catálogo...</div>
       <div *ngIf="clientError" class="mb-3 rounded bg-amber-50 p-3 text-sm text-amber-800">{{clientError}}</div>
-      <div *ngIf="!clientLoading && clientOrders.length === 0" class="rounded border border-dashed p-6 text-center text-sm text-slate-500">Aún no tienes órdenes registradas.</div>
+      <div *ngIf="clientOk" class="mb-3 rounded bg-emerald-50 p-3 text-sm text-emerald-800">{{clientOk}}</div>
+      <div *ngIf="!catLoading && servicios.length === 0" class="rounded border border-dashed p-6 text-center text-sm text-slate-500">No hay servicios disponibles por el momento.</div>
 
       <div class="grid gap-4 lg:grid-cols-2">
-        <mat-card *ngFor="let order of clientOrders" class="p-4">
+        <mat-card *ngFor="let s of servicios" class="p-4">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <p class="text-xs text-slate-500">Orden #{{order.id}}</p>
-              <h3 class="font-semibold text-slate-900">{{order.servicio}}</h3>
+              <p class="text-xs text-slate-500">{{s.categoria || 'Servicio'}}</p>
+              <h3 class="font-semibold text-slate-900">{{s.nombre}}</h3>
             </div>
-            <span class="rounded-full border px-2 py-1 text-xs font-medium" [ngClass]="statusClass(order.estado)">{{order.estado}}</span>
+            <span class="font-semibold text-emerald-700">\${{s.tarifa}}</span>
           </div>
-          <p *ngIf="order.descripcion" class="mt-2 text-sm text-slate-600">{{order.descripcion}}</p>
-          <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <div><span class="text-slate-500">Técnico</span><p class="font-medium">{{order.tecnicoAsignado || 'Pendiente de asignación'}}</p></div>
-            <div><span class="text-slate-500">Progreso</span><p class="font-medium">{{statusProgress(order.estado)}} / 4</p></div>
-          </div>
-          <div class="mt-3 h-2 overflow-hidden rounded bg-slate-100"><div class="h-full bg-blue-600 transition-all" [style.width.%]="statusProgress(order.estado) * 25"></div></div>
+          <p *ngIf="s.descripcion" class="mt-2 text-sm text-slate-600">{{s.descripcion}}</p>
           <div class="mt-4 flex justify-end">
-            <button mat-stroked-button *ngIf="canAdvance(order)" (click)="advanceClientOrder(order)"><mat-icon>arrow_forward</mat-icon> {{nextStatusLabel(order.estado)}}</button>
-            <span *ngIf="!canAdvance(order)" class="text-xs text-slate-400">Sin acciones pendientes</span>
+            <button mat-raised-button color="primary" (click)="requestService(s)" [disabled]="clientLoading"><mat-icon>add</mat-icon> Solicitar</button>
           </div>
         </mat-card>
       </div>
+
+      <mat-card class="p-4 mt-6">
+        <h2 class="mb-3 text-lg font-semibold">Repuestos</h2>
+        <div *ngIf="repuestos.length === 0" class="text-sm text-slate-500">No hay repuestos registrados.</div>
+        <div *ngFor="let item of repuestos" class="flex items-center justify-between gap-3 border-b py-3 last:border-0">
+          <div><p class="font-medium">{{item.nombre}}</p><p class="text-xs text-slate-500">SKU: {{item.sku}}</p></div>
+          <span class="font-semibold" [ngClass]="item.stockBajo ? 'text-red-600' : 'text-slate-700'">Stock: {{item.stock}}</span>
+        </div>
+      </mat-card>
     </section>
   </div>
   `
@@ -125,16 +123,15 @@ export class DashboardComponent implements OnInit {
   private wo = inject(WorkordersService);
   private cat = inject(CatalogService);
   kpis = { total: 0, porAsignar: 0, asignadas: 0, desplazamiento: 0, ejecucion: 0, cerradas: 0, canceladas: 0, stockCritico: 0, misOrdenes: 0 };
-  clientOrders: WorkOrderDto[] = [];
+  servicios: ServicioDto[] = [];
+  repuestos: RepuestoDto[] = [];
+  catLoading = false;
   clientLoading = false;
   clientError: string | null = null;
-  newServicio = '';
-  newDescripcion = '';
+  clientOk: string | null = null;
   adminPendingOrders: WorkOrderDto[] = [];
   supervisorPendingOrders: WorkOrderDto[] = [];
   lowStockItems: RepuestoDto[] = [];
-
-  get closedOrders(): number { return this.clientOrders.filter(order => order.estado === 'CERRADA').length; }
 
   ngOnInit(): void {
     this.wo.list().subscribe({ next: list => {
@@ -147,11 +144,14 @@ export class DashboardComponent implements OnInit {
       this.kpis.canceladas = list.filter(w=>w.estado==='CANCELADA').length;
       this.adminPendingOrders = list.filter(w=>!['CERRADA', 'CANCELADA'].includes(w.estado)).slice(0, 6);
       this.supervisorPendingOrders = list.filter(w=>w.estado === 'CREADA').slice(0, 6);
-      const email = this.auth.user?.email;
-      this.clientOrders = email ? list.filter(w=>w.clienteEmail===email) : list;
-      this.kpis.misOrdenes = this.clientOrders.filter(w=>w.estado !== 'CERRADA' && w.estado !== 'CANCELADA').length;
     }, error: ()=>{}});
     this.cat.stockBajo().subscribe({ next: l=> { this.kpis.stockCritico = l.length; this.lowStockItems = l; }, error: ()=>{} });
+    this.catLoading = true;
+    this.cat.listServicios(true).subscribe({
+      next: l => { this.servicios = l; this.catLoading = false; },
+      error: () => { this.catLoading = false; }
+    });
+    this.cat.listRepuestos().subscribe({ next: l => { this.repuestos = l; }, error: ()=>{} });
   }
 
   statusProgress(status: string): number {
@@ -162,29 +162,15 @@ export class DashboardComponent implements OnInit {
     return ({ CREADA: 'bg-amber-50 text-amber-700', ASIGNADA: 'bg-blue-50 text-blue-700', EN_DESPLAZAMIENTO: 'bg-cyan-50 text-cyan-700', EN_EJECUCION: 'bg-violet-50 text-violet-700', CERRADA: 'bg-emerald-50 text-emerald-700', CANCELADA: 'bg-red-50 text-red-700' } as Record<string, string>)[status] || 'bg-slate-50 text-slate-700';
   }
 
-  canAdvance(order: WorkOrderDto): boolean {
-    return ['CREADA', 'ASIGNADA', 'EN_DESPLAZAMIENTO', 'EN_EJECUCION'].includes(order.estado);
-  }
-
-  nextStatusLabel(status: string): string {
-    return ({ CREADA: 'Asignar', ASIGNADA: 'Iniciar desplazamiento', EN_DESPLAZAMIENTO: 'Iniciar ejecución', EN_EJECUCION: 'Cerrar orden' } as Record<string, string>)[status] || 'Avanzar';
-  }
-
-  advanceClientOrder(order: WorkOrderDto): void {
-    const next = ({ CREADA: 'ASIGNADA', ASIGNADA: 'EN_DESPLAZAMIENTO', EN_DESPLAZAMIENTO: 'EN_EJECUCION', EN_EJECUCION: 'CERRADA' } as Record<string, string>)[order.estado];
-    if (!next) return;
-    const payload: { estado: string; tecnico?: string } = { estado: next };
-    if (next === 'ASIGNADA') payload.tecnico = 'tecnico.' + (this.auth.user?.email || 'cliente') + '@digitalfix.cl';
-    this.wo.changeStatus(order.id, payload).subscribe({
-      next: updated => { Object.assign(order, updated); this.kpis.misOrdenes = this.clientOrders.filter(w=>w.estado !== 'CERRADA' && w.estado !== 'CANCELADA').length; },
-      error: err => this.clientError = err.error?.message || err.error?.error || err.message
-    });
-  }
-
-  createClientOrder(): void {
+  // Vista Cliente: solo solicitar servicios del catálogo. El cambio de estados y la
+  // asignación de técnicos es responsabilidad de Supervisor/Admin
+  // (ver WorkordersComponent), por eso no hay acciones de avance aquí.
+  requestService(s: ServicioDto): void {
     this.clientLoading = true;
-    this.wo.create({ clienteEmail: this.auth.user?.email || '', servicio: this.newServicio || 'Servicio nuevo', descripcion: this.newDescripcion || undefined }).subscribe({
-      next: order => { this.clientOrders = [order, ...this.clientOrders]; this.newServicio = ''; this.newDescripcion = ''; this.kpis.misOrdenes++; this.clientLoading = false; },
+    this.clientError = null;
+    this.clientOk = null;
+    this.wo.create({ clienteEmail: this.auth.user?.email || '', servicio: s.nombre }).subscribe({
+      next: order => { this.clientOk = `Orden #${order.id} solicitada para ${s.nombre}`; this.clientLoading = false; },
       error: err => { this.clientError = err.error?.message || err.message; this.clientLoading = false; }
     });
   }

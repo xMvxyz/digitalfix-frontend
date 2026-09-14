@@ -5,6 +5,7 @@ export interface ServicioDto {
   tarifa: number;
   categoria?: string;
   activo: boolean;
+  responsable?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -18,5 +19,6 @@ export interface RepuestoDto {
   stock: number;
   stockMinimo: number;
   stockBajo: boolean;
+  responsable?: string;
   createdAt?: string;
 }
