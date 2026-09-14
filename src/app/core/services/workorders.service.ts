@@ -2,18 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { WorkOrderDto } from '../../shared/models/work-order.models';
 
-export interface WorkOrderDto {
-  id: number;
-  clienteEmail: string;
-  servicio: string;
-  descripcion?: string;
-  estado: string;
-  tecnicoAsignado?: string;
-  repuestoId?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
+export type { WorkOrderDto } from '../../shared/models/work-order.models';
 
 @Injectable({ providedIn: 'root' })
 export class WorkordersService {
