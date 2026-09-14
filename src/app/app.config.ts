@@ -35,6 +35,8 @@ export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   const protectedResourceMap = new Map<string, Array<string>>();
   // Cada llamada a la API (o API Gateway/BFF) llevarÃ¡ el token y el scope indicado
   protectedResourceMap.set(`${environment.apiUrl}/*`, environment.msal.scopes);
+  protectedResourceMap.set('https://sscgh3fxo1.execute-api.us-east-1.amazonaws.com/*', environment.msal.scopes);
+  protectedResourceMap.set('/api/*', environment.msal.scopes);
 
   return {
     interactionType: InteractionType.Redirect,

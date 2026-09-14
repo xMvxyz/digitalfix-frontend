@@ -70,19 +70,33 @@ export class AuthService {
 
   syncFromMsalAccount(account: AccountInfo): void {
     if (!this.isBrowser) return;
+
+    // Establece la cuenta activa para que MsalInterceptor inyecte el Access Token automáticamente
+    if (this.msal) {
+      this.msal.instance.setActiveAccount(account);
+    }
+
     const claims = (account.idTokenClaims as any) || {};
     const roles: string[] = claims['roles'] || [];
     let role: UserRole = 'Cliente';
     if (roles.map((r:string)=>r.toLowerCase()).includes('admin')) role = 'Admin';
     else if (roles.map((r:string)=>r.toLowerCase()).includes('supervisor')) role = 'Supervisor';
-    const user: MockUser = { name: account.name || account.username || 'Usuario', email: account.username || '', role };
+    const user: MockUser = { 
+      name: account.name || account.username || 'Usuario',
+      email: account.username || '', 
+      role 
+    };
+
     localStorage.setItem('df_user', JSON.stringify(user));
     this.userSubject.next(user);
     // token se obtiene via acquireTokenSilent en interceptor MsalInterceptor; guardamos placeholder
-    this.msal?.instance.acquireTokenSilent({ scopes: environment.msal.scopes, account }).then(res => {
+    this.msal?.instance.acquireTokenSilent({ 
+      scopes: environment.msal.scopes,
+      account 
+    }).then(res => {
       localStorage.setItem('df_token', res.accessToken);
       this.tokenSubject.next(res.accessToken);
-    }).catch(()=>{});
+    }).catch(err => console.warn('Error adquiriendo token silencioso:', err));
   }
 
   logout(): void {
