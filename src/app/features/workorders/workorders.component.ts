@@ -8,7 +8,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatChipsModule } from '@angular/material/chips';
 import { AuthService } from '../../core/auth/auth.service';
-import { WorkordersService, WorkOrderDto } from '../../core/services/workorders.service';
+import { WorkordersService } from '../../core/services/workorders.service';
+import { WorkOrderDto } from '../../shared/models/work-order.models';
 
 interface WorkOrder {
   id: string;
@@ -26,10 +27,11 @@ interface WorkOrder {
   template: `
   <div class="p-6 max-w-7xl mx-auto">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-      <div><h1 class="text-2xl font-bold text-slate-900">Órdenes de trabajo</h1><p class="text-sm text-slate-500">Módulo principal • /api/workorders/* • Cliente crea, Supervisor/Admin cambia estados</p></div>
+      <div><h1 class="text-2xl font-bold text-slate-900">Órdenes de trabajo</h1><p class="text-sm text-slate-500">Módulo principal • /api/workorders/* • Cada rol opera según sus permisos</p></div>
       <div class="flex gap-2">
         <input [(ngModel)]="newServicio" placeholder="Servicio" class="border rounded px-2 py-1 text-sm"/>
         <input [(ngModel)]="newDescripcion" placeholder="Descripción" class="border rounded px-2 py-1 text-sm"/>
+        <input *ngIf="auth.role==='Admin' || auth.role==='Supervisor'" [(ngModel)]="selectedTechnician" placeholder="Técnico para asignar" class="border rounded px-2 py-1 text-sm"/>
         <button mat-raised-button color="primary" (click)="createOrder()"><mat-icon>add</mat-icon> Nueva orden</button>
       </div>
     </div>
@@ -40,13 +42,14 @@ interface WorkOrder {
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-slate-900 text-white">
-            <tr><th class="p-3 text-left">ID</th><th class="p-3 text-left">Cliente</th><th class="p-3 text-left">Servicio</th><th class="p-3 text-left">Estado</th><th class="p-3 text-left">Técnico</th><th class="p-3 text-left">Acción</th></tr>
+            <tr><th class="p-3 text-left">ID</th><th class="p-3 text-left">Cliente</th><th class="p-3 text-left">Servicio</th><th class="p-3 text-left">Detalle</th><th class="p-3 text-left">Estado</th><th class="p-3 text-left">Técnico</th><th class="p-3 text-left">Acción</th></tr>
           </thead>
           <tbody>
             <tr *ngFor="let o of orders" class="border-b hover:bg-slate-50">
               <td class="p-3 font-mono">{{o.id}}</td>
               <td class="p-3">{{o.client}}</td>
               <td class="p-3">{{o.service}}</td>
+              <td class="p-3 max-w-xs truncate">{{o.raw?.descripcion || '-'}}</td>
               <td class="p-3">
                 <span class="px-2 py-1 rounded-full text-xs font-medium border"
                   [ngClass]="{
@@ -61,7 +64,9 @@ interface WorkOrder {
               <td class="p-3">{{o.technician || '-'}}</td>
               <td class="p-3">
                 <button mat-stroked-button *ngIf="canChangeStatus(o)" (click)="nextStatus(o)" class="text-xs">Avanzar</button>
-                <span *ngIf="!canChangeStatus(o)" class="text-xs text-slate-400">{{ auth.role==='Cliente' ? 'Solo lectura' : 'Sin acción' }}</span>
+                <button mat-stroked-button *ngIf="canCancel(o)" (click)="cancelOrder(o)" class="ml-1 text-xs">Cancelar</button>
+                <button mat-icon-button *ngIf="auth.role==='Admin' && canDelete(o)" (click)="deleteOrder(o)" aria-label="Eliminar orden"><mat-icon>delete</mat-icon></button>
+                <span *ngIf="!canChangeStatus(o) && !canCancel(o)" class="text-xs text-slate-400">Sin acción</span>
               </td>
             </tr>
           </tbody>
@@ -72,7 +77,7 @@ interface WorkOrder {
       </div>
     </div>
 
-    <div class="mt-4 text-xs text-slate-500">Rol actual: {{auth.role}} • Cliente ve solo sus órdenes, Supervisor/Admin ven todas y cambian estado.</div>
+    <div class="mt-4 text-xs text-slate-500">Rol actual: {{auth.role}} • Cliente opera sus órdenes; Supervisor/Admin gestionan todas las órdenes visibles.</div>
   </div>
   `
 })
@@ -81,7 +86,7 @@ export class WorkordersComponent implements OnInit {
   private api = inject(WorkordersService);
   orders: WorkOrder[] = [];
   loading = false; error: string | null = null;
-  newServicio = ''; newDescripcion=''; newRepuestoId?: number;
+  newServicio = ''; newDescripcion=''; newRepuestoId?: number; selectedTechnician = '';
 
   ngOnInit(): void { this.load(); }
 
@@ -104,17 +109,47 @@ export class WorkordersComponent implements OnInit {
   }
 
   canChangeStatus(o: WorkOrder): boolean {
-    if (this.auth.role === 'Cliente') return false;
-    if (this.auth.role === 'Admin' || this.auth.role === 'Supervisor') return o.status !== 'CERRADA' && o.status !== 'CANCELADA';
+    if (this.auth.role === 'Admin' || this.auth.role === 'Supervisor' || this.auth.role === 'Cliente') return o.status !== 'CERRADA' && o.status !== 'CANCELADA';
     return false;
+  }
+
+  canCancel(o: WorkOrder): boolean {
+    return (this.auth.role === 'Admin' || this.auth.role === 'Supervisor' || this.auth.role === 'Cliente') && o.status !== 'CERRADA' && o.status !== 'CANCELADA';
+  }
+
+  canDelete(o: WorkOrder): boolean {
+    return o.status !== 'CERRADA';
+  }
+
+  cancelOrder(o: WorkOrder): void {
+    const idNum = Number(o.id) || Number(o.raw?.id);
+    if (!idNum || !confirm(`¿Cancelar la orden ${o.id}?`)) return;
+    this.api.changeStatus(idNum, { estado: 'CANCELADA' }).subscribe({
+      next: dto => Object.assign(o, this.mapDto(dto)),
+      error: err => alert('No se pudo cancelar: ' + (err.error?.message || err.message))
+    });
+  }
+
+  deleteOrder(o: WorkOrder): void {
+    const idNum = Number(o.id) || Number(o.raw?.id);
+    if (!idNum || !confirm(`¿Eliminar la orden ${o.id}?`)) return;
+    this.api.delete(idNum).subscribe({
+      next: () => this.orders = this.orders.filter(order => order !== o),
+      error: err => alert('No se pudo eliminar: ' + (err.error?.message || err.message))
+    });
   }
 
   nextStatus(o: WorkOrder) {
     const flow: Record<string, WorkOrder['status']> = { 'CREADA':'ASIGNADA','ASIGNADA':'EN_DESPLAZAMIENTO','EN_DESPLAZAMIENTO':'EN_EJECUCIÓN','EN_EJECUCIÓN':'CERRADA' };
     const next = flow[o.status];
     if (!next) return;
-    const payload: any = { estado: next.replace('EN_EJECUCIÓN','EN_EJECUCION') };
-    if (next==='ASIGNADA') payload.tecnico = 'tecnico.' + (this.auth.user?.email || 'tech') + '@digitalfix.cl';
+    const payload: { estado: string; tecnico?: string } = { estado: next.replace('EN_EJECUCIÓN','EN_EJECUCION') };
+    if (next==='ASIGNADA') {
+      payload.tecnico = (this.auth.role === 'Admin' || this.auth.role === 'Supervisor')
+        ? this.selectedTechnician.trim()
+        : 'cliente.' + (this.auth.user?.email || 'usuario');
+      if (!payload.tecnico) { alert('Selecciona o escribe un técnico antes de asignar.'); return; }
+    }
     const idNum = Number(o.id) || Number(o.raw?.id);
     if (!idNum) { o.status=next; return; }
     this.api.changeStatus(idNum, payload).subscribe({
