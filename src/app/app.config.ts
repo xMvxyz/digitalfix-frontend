@@ -1,11 +1,20 @@
-import { ApplicationConfig, provideZoneChangeDetection, APP_INITIALIZER } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { routes } from './app.routes';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { authInterceptor } from './core/interceptors/auth.interceptor';
-import { IPublicClientApplication, PublicClientApplication, InteractionType, BrowserCacheLocation, LogLevel } from '@azure/msal-browser';
-import { MsalInterceptor, MsalGuard, MsalService, MsalBroadcastService, MSAL_INSTANCE, MSAL_GUARD_CONFIG, MSAL_INTERCEPTOR_CONFIG, MsalGuardConfiguration, MsalInterceptorConfiguration } from '@azure/msal-angular';
+import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { 
+  MsalModule, 
+  MsalInterceptor, 
+  MsalGuard, 
+  MsalService, 
+  MsalBroadcastService,
+  MSAL_INSTANCE, 
+  MSAL_GUARD_CONFIG, 
+  MSAL_INTERCEPTOR_CONFIG,
+  MsalGuardConfiguration,
+  MsalInterceptorConfiguration
+} from '@azure/msal-angular';
+import { IPublicClientApplication, PublicClientApplication, InteractionType, BrowserCacheLocation } from '@azure/msal-browser';
 import { environment } from '../environments/environment';
 
 export function MSALInstanceFactory(): IPublicClientApplication {
@@ -14,32 +23,49 @@ export function MSALInstanceFactory(): IPublicClientApplication {
       clientId: environment.msal.clientId,
       authority: environment.msal.authority,
       redirectUri: environment.msal.redirectUri,
-      postLogoutRedirectUri: environment.msal.postLogoutRedirectUri,
+      postLogoutRedirectUri: '/'
     },
-    cache: { cacheLocation: BrowserCacheLocation.LocalStorage },
-    system: { loggerOptions: { loggerCallback: () => {}, piiLoggingEnabled: false, logLevel: LogLevel.Error } }
+    cache: {
+      cacheLocation: BrowserCacheLocation.LocalStorage
+    }
   });
 }
-export function MSALGuardConfigFactory(): MsalGuardConfiguration {
-  return { interactionType: InteractionType.Redirect, authRequest: { scopes: environment.msal.scopes } };
-}
+
 export function MSALInterceptorConfigFactory(): MsalInterceptorConfiguration {
   const protectedResourceMap = new Map<string, Array<string>>();
-  protectedResourceMap.set(environment.apiGatewayUrl, environment.msal.scopes);
-  protectedResourceMap.set('/api', environment.msal.scopes);
-  return { interactionType: InteractionType.Redirect, protectedResourceMap };
+  // Cada llamada a la API (o API Gateway/BFF) llevarÃ¡ el token y el scope indicado
+  protectedResourceMap.set(`${environment.apiUrl}/*`, environment.msal.scopes);
+
+  return {
+    interactionType: InteractionType.Redirect,
+    protectedResourceMap
+  };
+}
+
+export function MSALGuardConfigFactory(): MsalGuardConfiguration {
+  return {
+    interactionType: InteractionType.Redirect,
+    authRequest: {
+      scopes: environment.msal.scopes
+    }
+  };
 }
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideAnimationsAsync(),
-    provideHttpClient(withInterceptors([authInterceptor]), withInterceptorsFromDi()),
+    provideHttpClient(withInterceptorsFromDi()),
+    importProvidersFrom(MsalModule),
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: MsalInterceptor,
+      multi: true
+    },
     { provide: MSAL_INSTANCE, useFactory: MSALInstanceFactory },
     { provide: MSAL_GUARD_CONFIG, useFactory: MSALGuardConfigFactory },
     { provide: MSAL_INTERCEPTOR_CONFIG, useFactory: MSALInterceptorConfigFactory },
-    { provide: HTTP_INTERCEPTORS, useClass: MsalInterceptor, multi: true },
-    MsalService, MsalGuard, MsalBroadcastService,
+    MsalService,
+    MsalGuard,
+    MsalBroadcastService
   ]
 };

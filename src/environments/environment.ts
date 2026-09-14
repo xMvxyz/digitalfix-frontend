@@ -1,13 +1,14 @@
 export const environment = {
   production: false,
-  apiGatewayUrl: 'http://localhost:8080', // BFF via API Gateway - cambiar por real AWS
+  apiGatewayUrl: 'http://localhost:8080',
+  apiUrl: 'http://localhost:8080/api',
   msal: {
-    // Reemplazar con datos reales del tenant Entra ID para EP1
-    clientId: '00000000-0000-0000-0000-000000000000',
-    authority: 'https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000',
-    redirectUri: 'http://localhost:4200',
+    clientId: 'TU_CLIENT_ID_ANGULAR_ENTRA_ID',
+    authority: 'https://login.microsoftonline.com/TU_TENANT_ID',
+    redirectUri: 'http://localhost:4200/',
     postLogoutRedirectUri: 'http://localhost:4200/login',
-    scopes: ['api://00000000-0000-0000-0000-000000000000/access_as_user']
+    // Scope del recurso protegido (App Registration del BFF)
+    scopes: ['api://TU_API_CLIENT_ID/access_as_user']
   },
-  mockAuth: true // true para levantar sin Entra ID real; poner false cuando tengan tenant
+  mockAuth: false
 };
