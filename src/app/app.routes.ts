@@ -16,7 +16,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'workorders', loadComponent: () => import('./features/workorders/workorders.component').then(m => m.WorkordersComponent) },
-      { path: 'catalog', loadComponent: () => import('./features/catalog/catalog.component').then(m => m.CatalogComponent), canActivate: [roleGuard], data: { roles: ['Admin','Supervisor'] } },
+      { path: 'catalog', loadComponent: () => import('./features/catalog/catalog.component').then(m => m.CatalogComponent), canActivate: [roleGuard], data: { roles: ['Admin','Supervisor','Cliente'] } },
     ]
   },
   { path: '**', redirectTo: 'dashboard' }
