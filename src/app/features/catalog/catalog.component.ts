@@ -24,7 +24,7 @@ interface CatalogItem {
   template: `
   <div class="p-6 max-w-7xl mx-auto">
     <div class="flex justify-between items-center mb-6">
-      <div><h1 class="text-2xl font-bold text-slate-900">Catálogo</h1><p class="text-sm text-slate-500">/api/catalog/* • Servicios técnicos y repuestos • Acciones disponibles según rol</p></div>
+      <div><h1 class="text-2xl font-bold text-slate-900">Catálogo</h1></div>
       <button *ngIf="auth.role==='Admin'" mat-raised-button color="primary" (click)="startCreate()"><mat-icon>add</mat-icon> Nuevo item</button>
     </div>
 
@@ -56,14 +56,10 @@ interface CatalogItem {
           <button mat-stroked-button class="flex-1 text-xs" *ngIf="auth.role==='Admin'" (click)="deleteItem(item)"><mat-icon>delete</mat-icon> Eliminar</button>
           <button mat-stroked-button class="flex-1 text-xs" *ngIf="item.type==='REPUESTO' && (auth.role==='Admin' || auth.role==='Supervisor')" (click)="adjustStock(item, 1)"><mat-icon>add</mat-icon> Stock</button>
         </div>
-        <p *ngIf="item.stock < 5" class="text-xs text-red-600 mt-2">⚠ Stock crítico - Al asignar orden disminuye</p>
+        <p *ngIf="item.stock < 5" class="text-xs text-red-600 mt-2">Stock crítico</p>
       </mat-card>
     </div>
 
-    <div class="mt-6 bg-white p-4 rounded-xl shadow text-sm">
-      <h3 class="font-semibold">Regla stock:</h3>
-      <p class="text-slate-600">Al asignar una orden (CREADA → ASIGNADA) el stock del repuesto disminuye en 1. Validado en ms-workorders coordinado con ms-catalog vía BFF.</p>
-    </div>
   </div>
   `
 })

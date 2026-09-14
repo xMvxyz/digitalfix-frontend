@@ -27,7 +27,7 @@ interface WorkOrder {
   template: `
   <div class="p-6 max-w-7xl mx-auto">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-      <div><h1 class="text-2xl font-bold text-slate-900">Órdenes de trabajo</h1><p class="text-sm text-slate-500">Módulo principal • /api/workorders/* • Cada rol opera según sus permisos</p></div>
+      <div><h1 class="text-2xl font-bold text-slate-900">Órdenes de trabajo</h1></div>
       <div class="flex gap-2">
         <input [(ngModel)]="newServicio" placeholder="Servicio" class="border rounded px-2 py-1 text-sm"/>
         <input [(ngModel)]="newDescripcion" placeholder="Descripción" class="border rounded px-2 py-1 text-sm"/>
@@ -72,12 +72,7 @@ interface WorkOrder {
           </tbody>
         </table>
       </div>
-      <div class="p-3 bg-amber-50 border-t border-amber-200 text-xs text-amber-800">
-        <strong>Regla negocio:</strong> No se puede pasar a EN_EJECUCIÓN sin ASIGNAR. Al asignar disminuye stock del repuesto (ver /catalog).
-      </div>
     </div>
-
-    <div class="mt-4 text-xs text-slate-500">Rol actual: {{auth.role}} • Cliente opera sus órdenes; Supervisor/Admin gestionan todas las órdenes visibles.</div>
   </div>
   `
 })

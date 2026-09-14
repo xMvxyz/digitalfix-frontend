@@ -3,7 +3,6 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../core/auth/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -11,7 +10,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule, MatMenuModule],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule],
   template: `
   <mat-toolbar class="bg-slate-900 text-white sticky top-0 z-10" style="background:#0F172A;color:white">
     <span class="font-bold tracking-wide flex items-center gap-2">
@@ -19,16 +18,14 @@ import { CommonModule } from '@angular/common';
     </span>
     <span class="flex-1"></span>
     <nav class="hidden md:flex gap-1">
-      <a mat-button routerLink="/dashboard" routerLinkActive="bg-white/10"><mat-icon>dashboard</mat-icon> Dashboard</a>
-      <a mat-button routerLink="/workorders" routerLinkActive="bg-white/10"><mat-icon>assignment</mat-icon> Órdenes</a>
-      <a mat-button routerLink="/catalog" routerLinkActive="bg-white/10"><mat-icon>inventory_2</mat-icon> Catálogo</a>
+      <a mat-button routerLink="/dashboard" routerLinkActive="bg-white/10" style="color:white"><mat-icon>dashboard</mat-icon> Dashboard</a>
+      <a mat-button routerLink="/workorders" routerLinkActive="bg-white/10" style="color:white"><mat-icon>assignment</mat-icon> Órdenes</a>
+      <a mat-button routerLink="/catalog" routerLinkActive="bg-white/10" style="color:white"><mat-icon>inventory_2</mat-icon> Catálogo</a>
     </nav>
-    <button mat-button [matMenuTriggerFor]="menu" class="ml-2">
-      <mat-icon>account_circle</mat-icon> {{ auth.user?.name || 'Usuario' }} ({{ auth.role }})
+    <span class="ml-3 hidden text-sm text-white lg:inline">{{ auth.user?.name || 'Usuario' }} ({{ auth.role }})</span>
+    <button mat-button class="ml-2" style="color:white" (click)="logout()" aria-label="Cerrar sesión">
+      <mat-icon>logout</mat-icon> Cerrar sesión
     </button>
-    <mat-menu #menu="matMenu">
-      <button mat-menu-item (click)="logout()"><mat-icon>logout</mat-icon> Cerrar sesión</button>
-    </mat-menu>
   </mat-toolbar>
 
   <!-- Mobile nav -->
