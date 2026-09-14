@@ -26,8 +26,8 @@ interface CatalogItem {
   <div class="p-6 max-w-7xl mx-auto">
     <div class="flex justify-between items-center mb-4">
       <div><h1 class="text-2xl font-bold text-slate-900">Catálogo</h1>
-      <p class="text-sm text-slate-500">Gestión exclusiva del Supervisor sobre sus items asignados.</p></div>
-      <button *ngIf="auth.role==='Supervisor'" mat-raised-button color="primary" (click)="startCreate()"><mat-icon>add</mat-icon> Nuevo item</button>
+      <p class="text-sm text-slate-500">Gestión Admin y Supervisor sobre sus items asignados.</p></div>
+      <button *ngIf="auth.role==='Supervisor' || auth.role==='Admin'" mat-raised-button color="primary" (click)="startCreate()"><mat-icon>add</mat-icon> Nuevo item</button>
     </div>
     <label class="mb-4 inline-flex items-center gap-2 text-sm text-slate-600">
       <input type="checkbox" [(ngModel)]="onlyMine" class="accent-blue-600" /> Solo mis asignados
@@ -89,7 +89,7 @@ export class CatalogComponent implements OnInit {
   }
 
   canManage(item: CatalogItem): boolean {
-    if (this.auth.role !== 'Supervisor') return false;
+    if (this.auth.role !== 'Supervisor' && this.auth.role !== 'Admin') return false;
     if (!item.responsable) return true;
     return item.responsable.toLowerCase() === (this.auth.user?.email || '').toLowerCase();
   }

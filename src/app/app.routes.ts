@@ -19,13 +19,13 @@ export const routes: Routes = [
         path: 'workorders',
         component: WorkordersComponent,
         canActivate: [roleGuard],
-        data: { roles: ['Admin', 'Supervisor'] } // Solo Supervisor y Admin ven órdenes
+        data: { roles: ['Admin', 'Supervisor', 'Cliente'] } // Cliente ve/sigue sus ordenes (solo lectura)
       },
       {
         path: 'catalog',
         component: CatalogComponent,
         canActivate: [roleGuard],
-        data: { roles: ['Supervisor'] } // Gestión exclusiva del Supervisor
+        data: { roles: ['Admin', 'Supervisor'] } // Lectura Admin+Supervisor, gestion segun responsable
       },
       { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
     ]

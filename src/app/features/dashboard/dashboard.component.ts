@@ -90,6 +90,15 @@ import { RepuestoDto, ServicioDto } from '../../shared/models/catalog.models';
       <div *ngIf="clientOk" class="mb-3 rounded bg-emerald-50 p-3 text-sm text-emerald-800">{{clientOk}}</div>
       <div *ngIf="!catLoading && servicios.length === 0" class="rounded border border-dashed p-6 text-center text-sm text-slate-500">No hay servicios disponibles por el momento.</div>
 
+      <div class="mb-4 flex flex-wrap items-center gap-2">
+        <label class="text-sm text-slate-600">Repuesto (opcional, descuenta stock al asignar):</label>
+        <select [(ngModel)]="selectedRepuestoId" class="border rounded px-2 py-1 text-sm bg-white">
+          <option [ngValue]="undefined">Sin repuesto</option>
+          <option *ngFor="let r of repuestos" [ngValue]="r.id">{{r.nombre}} (stock {{r.stock}})</option>
+        </select>
+        <a href="/workorders" class="text-sm text-blue-600">Mis órdenes ({{myOrders.length}})</a>
+      </div>
+
       <div class="grid gap-4 lg:grid-cols-2">
         <mat-card *ngFor="let s of servicios" class="p-4">
           <div class="flex items-start justify-between gap-3">
@@ -132,6 +141,8 @@ export class DashboardComponent implements OnInit {
   adminPendingOrders: WorkOrderDto[] = [];
   supervisorPendingOrders: WorkOrderDto[] = [];
   lowStockItems: RepuestoDto[] = [];
+  myOrders: WorkOrderDto[] = [];
+  selectedRepuestoId?: number;
 
   ngOnInit(): void {
     this.wo.list().subscribe({ next: list => {
@@ -144,6 +155,7 @@ export class DashboardComponent implements OnInit {
       this.kpis.canceladas = list.filter(w=>w.estado==='CANCELADA').length;
       this.adminPendingOrders = list.filter(w=>!['CERRADA', 'CANCELADA'].includes(w.estado)).slice(0, 6);
       this.supervisorPendingOrders = list.filter(w=>w.estado === 'CREADA').slice(0, 6);
+      this.myOrders = list.slice(0, 6);
     }, error: ()=>{}});
     this.cat.stockBajo().subscribe({ next: l=> { this.kpis.stockCritico = l.length; this.lowStockItems = l; }, error: ()=>{} });
     this.catLoading = true;
@@ -169,7 +181,7 @@ export class DashboardComponent implements OnInit {
     this.clientLoading = true;
     this.clientError = null;
     this.clientOk = null;
-    this.wo.create({ clienteEmail: this.auth.user?.email || '', servicio: s.nombre }).subscribe({
+    this.wo.create({ clienteEmail: this.auth.user?.email || '', servicio: s.nombre, repuestoId: this.selectedRepuestoId }).subscribe({
       next: order => { this.clientOk = `Orden #${order.id} solicitada para ${s.nombre}`; this.clientLoading = false; },
       error: err => { this.clientError = err.error?.message || err.message; this.clientLoading = false; }
     });

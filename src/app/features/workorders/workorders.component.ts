@@ -42,6 +42,7 @@ interface WorkOrder {
       <div class="flex flex-wrap gap-2 items-center">
         <input [(ngModel)]="newServicio" placeholder="Servicio" class="border rounded px-2 py-1 text-sm bg-white"/>
         <input [(ngModel)]="newDescripcion" placeholder="Descripción" class="border rounded px-2 py-1 text-sm bg-white"/>
+        <input [(ngModel)]="newRepuestoId" type="number" placeholder="Repuesto ID (opcional)" class="border rounded px-2 py-1 text-sm bg-white w-44"/>
         <input *ngIf="isManager()" [(ngModel)]="selectedTechnician" placeholder="Técnico a asignar" class="border rounded px-2 py-1 text-sm bg-white"/>
         <button mat-raised-button color="primary" (click)="createOrder()"><mat-icon>add</mat-icon> Nueva orden</button>
       </div>

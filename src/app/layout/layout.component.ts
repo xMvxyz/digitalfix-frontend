@@ -19,8 +19,8 @@ import { CommonModule } from '@angular/common';
     <span class="flex-1"></span>
     <nav class="hidden md:flex gap-1">
       <a mat-button routerLink="/dashboard" routerLinkActive="bg-white/10" style="color:white"><mat-icon>dashboard</mat-icon> Dashboard</a>
-      <a mat-button *ngIf="auth.role === 'Admin' || auth.role === 'Supervisor'" routerLink="/workorders" routerLinkActive="bg-white/10" style="color:white"><mat-icon>assignment</mat-icon> Órdenes</a>
-      <a mat-button *ngIf="auth.role === 'Supervisor'" routerLink="/catalog" routerLinkActive="bg-white/10" style="color:white"><mat-icon>inventory_2</mat-icon> Catálogo</a>
+      <a mat-button *ngIf="auth.role === 'Admin' || auth.role === 'Supervisor' || auth.role === 'Cliente'" routerLink="/workorders" routerLinkActive="bg-white/10" style="color:white"><mat-icon>assignment</mat-icon> Órdenes</a>
+      <a mat-button *ngIf="auth.role === 'Supervisor' || auth.role === 'Admin'" routerLink="/catalog" routerLinkActive="bg-white/10" style="color:white"><mat-icon>inventory_2</mat-icon> Catálogo</a>
     </nav>
     <span class="ml-3 hidden text-sm text-white lg:inline">{{ auth.user?.name || 'Usuario' }} ({{ auth.role }})</span>
     <button mat-button class="ml-2" style="color:white" (click)="logout()" aria-label="Cerrar sesión">
@@ -31,8 +31,8 @@ import { CommonModule } from '@angular/common';
   <!-- Mobile nav -->
   <div class="md:hidden flex gap-2 p-2 bg-slate-100 border-b">
     <a mat-stroked-button routerLink="/dashboard" class="flex-1">Dashboard</a>
-    <a mat-stroked-button *ngIf="auth.role === 'Admin' || auth.role === 'Supervisor'" routerLink="/workorders" class="flex-1">Órdenes</a>
-    <a mat-stroked-button *ngIf="auth.role === 'Supervisor'" routerLink="/catalog" class="flex-1">Catálogo</a>
+    <a mat-stroked-button *ngIf="auth.role === 'Admin' || auth.role === 'Supervisor' || auth.role === 'Cliente'" routerLink="/workorders" class="flex-1">Órdenes</a>
+    <a mat-stroked-button *ngIf="auth.role === 'Supervisor' || auth.role === 'Admin'" routerLink="/catalog" class="flex-1">Catálogo</a>
   </div>
 
   <div class="min-h-[calc(100vh-64px)] bg-slate-50">
